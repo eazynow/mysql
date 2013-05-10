@@ -945,9 +945,33 @@ func (rows *mysqlRows) readBinaryRow(dest []driver.Value) (err error) {
 			pos += 8
 			continue
 
+		// Adding support to turn a single bit into a boolean
+		case fieldTypeBit:
+			var isNull bool
+			var singleBit bool
+			singleBit, n = isASingleBit(data[pos:])
+			if singleBit {
+				//  single bit so evaluate it as a boolean
+				dest[i] = data[pos:][1]==1
+			} else {
+				// not single, so treat as a string
+				dest[i], isNull, n, err = readLengthEnodedString(data[pos:])
+			}
+
+			pos += n
+			if err == nil {
+				if !isNull {
+					continue
+				} else {
+					dest[i] = nil
+					continue
+				}
+			}
+			return // err			
+
 		// Length coded Binary Strings
 		case fieldTypeDecimal, fieldTypeNewDecimal, fieldTypeVarChar,
-			fieldTypeBit, fieldTypeEnum, fieldTypeSet, fieldTypeTinyBLOB,
+			fieldTypeEnum, fieldTypeSet, fieldTypeTinyBLOB,
 			fieldTypeMediumBLOB, fieldTypeLongBLOB, fieldTypeBLOB,
 			fieldTypeVarString, fieldTypeString, fieldTypeGeometry:
 			var isNull bool
