@@ -345,6 +345,12 @@ func stringToInt(b []byte) int {
 	return val
 }
 
+func isASingleBit(b []byte) (bool, int){
+	num, _, n := readLengthEncodedInteger(b)
+
+	return num == 1, n + int(num)
+}
+
 func readLengthEnodedString(b []byte) ([]byte, bool, int, error) {
 	// Get length
 	num, isNull, n := readLengthEncodedInteger(b)
