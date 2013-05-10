@@ -13,6 +13,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"io"
+	"fmt"
 )
 
 type mysqlField struct {
@@ -64,11 +65,14 @@ func (rows *mysqlRows) Next(dest []driver.Value) error {
 
 	// Fetch next row from stream
 	var err error
+
 	if rows.binary {
 		err = rows.readBinaryRow(dest)
 	} else {
 		err = rows.readRow(dest)
 	}
+
+	fmt.Println("In mysql Next!!!", err)
 
 	if err == io.EOF {
 		rows.eof = true

@@ -540,23 +540,43 @@ func (mc *mysqlConn) readColumns(count int) (columns []mysqlField, err error) {
 // Read Packets as Field Packets until EOF-Packet or an Error appears
 // http://dev.mysql.com/doc/internals/en/text-protocol.html#packet-ProtocolText::ResultsetRow
 func (rows *mysqlRows) readRow(dest []driver.Value) (err error) {
+	fmt.Println("reading the readRow")
 	data, err := rows.mc.readPacket()
 	if err != nil {
 		return
 	}
 
+
 	// EOF Packet
 	if data[0] == iEOF && len(data) == 5 {
 		return io.EOF
 	}
-
 	// RowSet Packet
 	var n int
 	var isNull bool
 	pos := 0
 
 	for i := range dest {
+		fmt.Println("dest", i , rows.columns[i], rows.columns[i].fieldType == fieldTypeBit, dest[i])
 		// Read bytes and convert to string
+
+		if rows.columns[i].fieldType == fieldTypeBit {
+
+			var singleBit bool
+			singleBit, n = isASingleBit(data[pos:])
+			if singleBit {
+				//  single bit so evaluate it as a boolean
+				dest[i] = data[pos:][1]==1
+				fmt.Println("bitty!!!", singleBit, dest[i])
+			} else {
+				// not single, so treat as a string
+				dest[i], isNull, n, err = readLengthEnodedString(data[pos:])
+			}
+			
+		} else {
+			dest[i], isNull, n, err = readLengthEnodedString(data[pos:])
+		}
+
 		dest[i], isNull, n, err = readLengthEnodedString(data[pos:])
 		pos += n
 		if err == nil {
@@ -947,6 +967,7 @@ func (rows *mysqlRows) readBinaryRow(dest []driver.Value) (err error) {
 
 		// Adding support to turn a single bit into a boolean
 		case fieldTypeBit:
+			fmt.Println("here!")
 			var isNull bool
 			var singleBit bool
 			singleBit, n = isASingleBit(data[pos:])
